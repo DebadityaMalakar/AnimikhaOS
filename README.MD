@@ -8,3 +8,4 @@ Days of Development
 
 - Day1 [Bootloader Development Go Crazy]
 - Day2 [Implementing FAT i.e ur mom] [The implementation looks vastly different than the one shown in YouTube because I well first implemented according to the YouTube standards and then tested and when it worked I passed the C++ through Claude AI for improvement and thus the diff implementation in C++]
+- Day3 [Bootloader Improvement] [Bootloader split into 2 parts]

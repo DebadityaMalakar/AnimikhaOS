@@ -1,12 +1,12 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <cstring>
-#include <cctype>
-#include <stdexcept>
-#include <cstdint>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
-// Use standard types instead of custom typedefs
+typedef unsigned char      uint8_t;
+typedef unsigned short     uint16_t;
+typedef unsigned int       uint32_t;
+
 struct BootSector {
     uint8_t BootJumpInstruction[3];
     uint8_t OemIdentifier[8];
@@ -27,8 +27,8 @@ struct BootSector {
     uint8_t DriveNumber;
     uint8_t _Reserved;
     uint8_t Signature;
-    uint32_t VolumeId;          // serial number, value doesn't matter
-    uint8_t VolumeLabel[11];    // 11 bytes, padded with spaces
+    uint32_t VolumeId;          
+    uint8_t VolumeLabel[11];    
     uint8_t SystemId[8];
 } __attribute__((packed));
 
@@ -48,31 +48,30 @@ struct DirectoryEntry {
 } __attribute__((packed));
 
 class FATFileReader {
-private:
+public:  // Changed to public for direct access in main()
     BootSector m_BootSector;
-    std::vector<uint8_t> m_Fat;
-    std::vector<DirectoryEntry> m_RootDirectory;
+    uint8_t* m_Fat;
+    DirectoryEntry* m_RootDirectory;
     uint32_t m_RootDirectoryEnd;
-    std::ifstream m_DiskImage;
+    FILE* m_DiskImage;
 
-    bool readBootSector() {
-        return m_DiskImage.read(reinterpret_cast<char*>(&m_BootSector), sizeof(m_BootSector)).gcount() == sizeof(m_BootSector);
+private:
+    int readBootSector() {
+        return fread(&m_BootSector, sizeof(m_BootSector), 1, m_DiskImage) > 0;
     }
 
-    bool readSectors(uint32_t lba, uint32_t count, char* bufferOut) {
-        m_DiskImage.seekg(lba * m_BootSector.BytesPerSector);
-        if (!m_DiskImage) return false;
-
-        m_DiskImage.read(bufferOut, count * m_BootSector.BytesPerSector);
-        return m_DiskImage.gcount() == count * m_BootSector.BytesPerSector;
+    int readSectors(uint32_t lba, uint32_t count, void* bufferOut) {
+        if (fseek(m_DiskImage, lba * m_BootSector.BytesPerSector, SEEK_SET) != 0)
+            return 0;
+        return fread(bufferOut, m_BootSector.BytesPerSector, count, m_DiskImage) == count;
     }
 
-    bool readFat() {
-        m_Fat.resize(m_BootSector.SectorsPerFat * m_BootSector.BytesPerSector);
-        return readSectors(m_BootSector.ReservedSectors, m_BootSector.SectorsPerFat, reinterpret_cast<char*>(m_Fat.data()));
+    int readFat() {
+        m_Fat = (uint8_t*)malloc(m_BootSector.SectorsPerFat * m_BootSector.BytesPerSector);
+        return readSectors(m_BootSector.ReservedSectors, m_BootSector.SectorsPerFat, m_Fat);
     }
 
-    bool readRootDirectory() {
+    int readRootDirectory() {
         uint32_t lba = m_BootSector.ReservedSectors + m_BootSector.SectorsPerFat * m_BootSector.FatCount;
         uint32_t size = sizeof(DirectoryEntry) * m_BootSector.DirEntryCount;
         uint32_t sectors = (size / m_BootSector.BytesPerSector);
@@ -80,97 +79,136 @@ private:
             sectors++;
 
         m_RootDirectoryEnd = lba + sectors;
-        m_RootDirectory.resize(sectors * m_BootSector.BytesPerSector / sizeof(DirectoryEntry));
-        return readSectors(lba, sectors, reinterpret_cast<char*>(m_RootDirectory.data()));
+        m_RootDirectory = (DirectoryEntry*)malloc(sectors * m_BootSector.BytesPerSector);
+        return readSectors(lba, sectors, m_RootDirectory);
     }
 
 public:
-    FATFileReader(const std::string& diskImagePath) {
-        m_DiskImage.open(diskImagePath, std::ios::binary);
-        if (!m_DiskImage) {
-            throw std::runtime_error("Cannot open disk image");
-        }
+    FATFileReader() : m_Fat(NULL), m_RootDirectory(NULL), m_DiskImage(NULL) {}
+
+    ~FATFileReader() {
+        if (m_Fat) free(m_Fat);
+        if (m_RootDirectory) free(m_RootDirectory);
+        if (m_DiskImage) fclose(m_DiskImage);
+    }
+
+    int open(const char* path) {
+        m_DiskImage = fopen(path, "rb");
+        return m_DiskImage != NULL;
     }
 
     DirectoryEntry* findFile(const char* name) {
-        for (auto& entry : m_RootDirectory) {
-            if (memcmp(name, entry.Name, 11) == 0) {
-                return &entry;
-            }
+        for (uint32_t i = 0; i < m_BootSector.DirEntryCount; ++i) {
+            if (memcmp(name, m_RootDirectory[i].Name, 11) == 0)
+                return &m_RootDirectory[i];
         }
-        return nullptr;
+        return NULL;
     }
 
-    std::vector<uint8_t> readFile(DirectoryEntry* fileEntry) {
-        std::vector<uint8_t> buffer(fileEntry->Size + m_BootSector.BytesPerSector);
-        uint8_t* currentBuffer = buffer.data();
+    int readFile(DirectoryEntry* fileEntry, uint8_t* outputBuffer) {
+        int ok = 1;
         uint16_t currentCluster = fileEntry->FirstClusterLow;
 
         do {
             uint32_t lba = m_RootDirectoryEnd + (currentCluster - 2) * m_BootSector.SectorsPerCluster;
-            if (!readSectors(lba, m_BootSector.SectorsPerCluster, reinterpret_cast<char*>(currentBuffer))) {
-                throw std::runtime_error("Could not read file clusters");
-            }
-            currentBuffer += m_BootSector.SectorsPerCluster * m_BootSector.BytesPerSector;
+            ok = ok && readSectors(lba, m_BootSector.SectorsPerCluster, outputBuffer);
+            outputBuffer += m_BootSector.SectorsPerCluster * m_BootSector.BytesPerSector;
 
             uint32_t fatIndex = currentCluster * 3 / 2;
             if (currentCluster % 2 == 0)
-                currentCluster = (*(uint16_t*)(m_Fat.data() + fatIndex)) & 0x0FFF;
+                currentCluster = (*(uint16_t*)(m_Fat + fatIndex)) & 0x0FFF;
             else
-                currentCluster = (*(uint16_t*)(m_Fat.data() + fatIndex)) >> 4;
+                currentCluster = (*(uint16_t*)(m_Fat + fatIndex)) >> 4;
 
-        } while (currentCluster < 0x0FF8);
+        } while (ok && currentCluster < 0x0FF8);
 
-        return buffer;
+        return ok;
     }
 
-    void processAndPrintFile(const std::string& fileName) {
-        DirectoryEntry* fileEntry = findFile(fileName.c_str());
-        if (!fileEntry) {
-            throw std::runtime_error("Could not find file: " + fileName);
-        }
-
-        auto buffer = readFile(fileEntry);
-
-        for (size_t i = 0; i < fileEntry->Size; i++) {
-            if (std::isprint(buffer[i])) {
-                std::cout << static_cast<char>(buffer[i]);
-            } else {
-                std::printf("<%02x>", buffer[i]);
-            }
-        }
-        std::cout << std::endl;
-    }
-
-    void readAndPrepare() {
+    int prepare() {
         if (!readBootSector()) {
-            throw std::runtime_error("Could not read boot sector");
+            fprintf(stderr, "Could not read boot sector!\n");
+            return 0;
         }
 
         if (!readFat()) {
-            throw std::runtime_error("Could not read FAT");
+            fprintf(stderr, "Could not read FAT!\n");
+            free(m_Fat);
+            return 0;
         }
 
         if (!readRootDirectory()) {
-            throw std::runtime_error("Could not read root directory");
+            fprintf(stderr, "Could not read root directory!\n");
+            free(m_Fat);
+            free(m_RootDirectory);
+            return 0;
         }
+
+        return 1;
+    }
+
+    void printFile(DirectoryEntry* fileEntry) {
+        uint8_t* buffer = (uint8_t*)malloc(fileEntry->Size + m_BootSector.BytesPerSector);
+        
+        if (buffer && readFile(fileEntry, buffer)) {
+            for (size_t i = 0; i < fileEntry->Size; i++) {
+                if (isprint(buffer[i])) 
+                    fputc(buffer[i], stdout);
+                else 
+                    printf("<%02x>", buffer[i]);
+            }
+            printf("\n");
+        } else {
+            fprintf(stderr, "Could not read file\n");
+        }
+
+        if (buffer) free(buffer);
     }
 };
 
 int main(int argc, char** argv) {
     if (argc < 3) {
-        std::cerr << "Syntax: " << argv[0] << " <disk image> <file name>" << std::endl;
+        fprintf(stderr, "Syntax: %s <disk image> <file name>\n", argv[0]);
         return -1;
     }
 
-    try {
-        FATFileReader reader(argv[1]);
-        reader.readAndPrepare();
-        reader.processAndPrintFile(argv[2]);
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+    FATFileReader reader;
+    if (!reader.open(argv[1])) {
+        fprintf(stderr, "Cannot open disk image %s!\n", argv[1]);
         return -1;
     }
 
+    if (!reader.prepare()) {
+        return -2; // Could not read boot sector (-2)
+    }
+
+    DirectoryEntry* fileEntry = reader.findFile(argv[2]);
+    if (!fileEntry) {
+        fprintf(stderr, "Could not find file %s!\n", argv[2]);
+        free(reader.m_Fat);
+        free(reader.m_RootDirectory);
+        return -5; // Could not find file (-5)
+    }
+
+    uint8_t* buffer = (uint8_t*)malloc(fileEntry->Size + reader.m_BootSector.BytesPerSector);
+    if (!reader.readFile(fileEntry, buffer)) {
+        fprintf(stderr, "Could not read file %s!\n", argv[2]);
+        free(reader.m_Fat);
+        free(reader.m_RootDirectory);
+        free(buffer);
+        return -5; // Could not read file (-5)
+    }
+
+    for (size_t i = 0; i < fileEntry->Size; i++) {
+        if (isprint(buffer[i])) 
+            fputc(buffer[i], stdout);
+        else 
+            printf("<%02x>", buffer[i]);
+    }
+    printf("\n");
+
+    free(buffer);
+    free(reader.m_Fat);
+    free(reader.m_RootDirectory);
     return 0;
 }
