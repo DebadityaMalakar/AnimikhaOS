@@ -4,7 +4,7 @@ Making an OS from scratch.
 
 Source: <a href="https://www.youtube.com/playlist?list=PLFjM7v6KGMpiH2G-kT781ByCNC_0pKpPN">Building an OS</a>
 
-<a href="https://github.com/nanobyte-dev/nanobyte_os"> GitHub Source
+<a href="https://github.com/nanobyte-dev/nanobyte_os"> GitHub Source for Building an OS - the inspo for the base and basics of my OS
 </a>
 
 
