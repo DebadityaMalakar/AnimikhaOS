@@ -1,6 +1,7 @@
 # AnimikhaOS
 
 Plans:
+
     - Part 1: The Bootloader []
 
     - Part 2: The Kernel {Memory Management} []
