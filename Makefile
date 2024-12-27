@@ -34,9 +34,10 @@ KERNEL_BIN = $(KERNEL_BUILD_DIR)/kernel.bin
 # Default target
 all: $(DISK_IMG)
 
-# Build bootloader and kernel
+# Build bootloader and kernel creating a 1.44MiB floppy
 $(DISK_IMG): $(BOOTLOADER_BIN) $(KERNEL_BIN)
 	cat $(BOOTLOADER_BIN) $(KERNEL_BIN) > $(DISK_IMG)
+	truncate -s 1440K $(DISK_IMG)
 
 # Ensure bootloader is built
 $(BOOTLOADER_BIN):
@@ -45,6 +46,9 @@ $(BOOTLOADER_BIN):
 # Ensure kernel is built
 $(KERNEL_BIN):
 	$(MAKE) -C $(KERNEL_DIR) all
+
+run-bootloader: $(DISK_IMG)
+	qemu-system-i386 -fda $<
 
 # Clean build files
 clean:
