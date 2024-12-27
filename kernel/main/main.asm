@@ -6,8 +6,7 @@ start:
     ; Note: we are not in 32-bit protected mode at this point
     ; We are still in 16-bit real mode. Eventually when you
     ; call into 32-bit C code you will have to enter 32-bit
-    ; protected mode first. This code doesn't enter 32-bit
-    ; protected mode
+    ; protected mode first.
     cli                  ; Clear interrupts
     cld                  ; Clear direction flag
     xor ax, ax           ; Zero out AX
