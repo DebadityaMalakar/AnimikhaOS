@@ -2,11 +2,12 @@
 NASM = nasm
 CXX = g++
 LD = ld
+OBJCOPY = objcopy
 
 # Flags
 NASMFLAGS = -f elf32
 CXXFLAGS = -m32 -fno-pie -fno-stack-protector -nostdlib -fno-rtti -fno-exceptions -ffreestanding -O2
-LDFLAGS = -m elf_i386 -T kernel.ld --oformat binary
+LDFLAGS = -m elf_i386 -T kernel.ld
 
 # Directories
 KERNEL_DIR = .
@@ -26,6 +27,7 @@ ALL_OBJECTS = $(ASM_OBJECTS) $(CPP_OBJECTS)
 
 # Output kernel binary
 KERNEL = $(BUILD_DIR)/kernel.bin
+KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 
 # Make sure these directories exist
 NEEDED_DIRS = $(dir $(ASM_OBJECTS) $(CPP_OBJECTS))
@@ -45,9 +47,13 @@ $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Link everything together
-$(KERNEL): $(ALL_OBJECTS)
+# Link everything together to an ELF file
+$(KERNEL_ELF): $(ALL_OBJECTS)
 	$(LD) $(LDFLAGS) $(ALL_OBJECTS) -o $@
+
+# Convert kernel elf file to bin file
+$(KERNEL): $(KERNEL_ELF)
+	$(OBJCOPY) -O binary $< $@
 
 # Clean build files
 clean:

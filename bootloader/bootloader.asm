@@ -6,6 +6,8 @@ start:
     xor ax, ax      ; Zero out AX
     mov ds, ax      ; Set Data Segment to 0x0000
     mov es, ax      ; Set Extra Segment to 0x0000
+    mov ss, ax      ; Set SS:SP to 0x0000:0xfffe
+    mov sp, 0xfffe
 
     ; Print "AnimikhaOS is booting" to the screen
     mov si, message
@@ -28,7 +30,7 @@ delay:
     call load_kernel
 
     ; Jump to kernel
-    jmp 0x1000         ; Assuming kernel entry point is at 0x1000
+    jmp 0x0000:0x1000         ; Assuming kernel entry point is at 0x1000, Set CS to 0
 
 delay_1s:
     push cx
@@ -40,10 +42,11 @@ delay_loop:
     ret
 
 load_kernel:
-    ; Load kernel from disk to 0x1000:0000
-    mov bx, 0x1000     ; Load to address 0x1000:0000
+    ; Load kernel from disk to 0x0000:0x1000
+    mov bx, 0x0000     ; Load to address 0x0000:0x1000
     mov dh, 0          ; Track (head) number
-    mov dl, 0x80       ; Drive number (first hard drive)
+;   Use DL passed by BIOS to bootloader
+;   mov dl, 0x80       ; Drive number (first hard drive)
     mov ch, 0          ; Cylinder number
     mov cl, 2          ; Start reading from sector 2
 
@@ -51,7 +54,7 @@ load_kernel:
     mov ah, 0x02       ; BIOS read sectors
     mov al, 18         ; Number of sectors to read
     mov es, bx         ; ES:BX -> destination segment:offset
-    mov bx, 0x0000     ; Offset in segment
+    mov bx, 0x1000     ; Offset in segment
 
     int 0x13           ; BIOS disk interrupt
 

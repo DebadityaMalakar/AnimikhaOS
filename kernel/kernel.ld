@@ -1,11 +1,13 @@
 ENTRY(start)  /* Assuming 'start' is your entry point label in main.asm */
-
 SECTIONS
 {
-    . = 0x100000;    /* Kernel loads at 1MB */
+    . = 0x1000;    /* Kernel loaded at 0x1000 by bootloader */
 
     .text :
     {
+        /* .text.startup section is first so it
+           will be the first code executed */
+        *(.text.startup)
         *(.text)
     }
 

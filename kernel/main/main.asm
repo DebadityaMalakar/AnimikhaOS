@@ -1,14 +1,18 @@
-section .text
+bits 16
+section .text.startup
 global start
 
 start:
+    ; Note: we are not in 32-bit protected mode at this point
+    ; We are still in 16-bit real mode. Eventually when you
+    ; call into 32-bit C code you will have to enter 32-bit
+    ; protected mode first.
     cli                  ; Clear interrupts
     cld                  ; Clear direction flag
     xor ax, ax           ; Zero out AX
     mov ds, ax           ; Set DS to 0x0000
     mov es, ax           ; Set ES to 0x0000
-    mov ss, ax           ; Set SS to 0x0000
-    mov esp, 0x9FC0      ; Set stack pointer (somewhere below 0xA000)
+                         ; Real mode stack set in bootloader
 
     ; Call the memory detection function
     call detect_memory
