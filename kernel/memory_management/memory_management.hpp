@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+
 namespace Memory {
     // Structure to hold memory map entry information
     struct MemoryMapEntry {
@@ -29,13 +30,14 @@ namespace Memory {
         static void printMemoryInfo();
 
     private:
-        static constexpr uint32_t MEMORY_MAP_ADDR = 0x8004;  // Where main.asm stores the memory map
-        static constexpr uint32_t ENTRY_COUNT_ADDR = 0x8000; // Where entry count is stored
-        
         static void parseMemoryMap();
         static MemoryMapEntry* getMemoryMap();
         static uint32_t getEntryCount();
     };
+
+    // These are exported from main.asm
+    extern "C" MemoryMapEntry memory_map[];
+    extern "C" uint32_t entries_counter;
 }
 
 #endif // MEMORY_MANAGEMENT_HPP

@@ -48,7 +48,7 @@ $(KERNEL_BIN):
 	$(MAKE) -C $(KERNEL_DIR) all
 
 run-bootloader: $(DISK_IMG)
-	qemu-system-i386 -fda $<
+	qemu-system-i386 -fda $< -debugcon stdio
 
 # Clean build files
 clean:
