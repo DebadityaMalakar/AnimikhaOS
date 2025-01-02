@@ -1,6 +1,7 @@
 #include "memory_management.hpp"
 #include "../io/printk.hpp"
 
+
 extern "C" void putchar(char c);
 
 namespace Memory {
@@ -11,11 +12,11 @@ namespace Memory {
     }
 
     MemoryMapEntry* MemoryManager::getMemoryMap() {
-        return reinterpret_cast<MemoryMapEntry*>(MEMORY_MAP_ADDR);
+        return memory_map;
     }
 
     uint32_t MemoryManager::getEntryCount() {
-        return *reinterpret_cast<uint32_t*>(ENTRY_COUNT_ADDR);
+        return entries_counter;
     }
 
     uint64_t MemoryManager::getTotalRAM() {

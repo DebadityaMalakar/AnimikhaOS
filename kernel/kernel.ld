@@ -8,12 +8,12 @@ SECTIONS
         /* .text.startup section is first so it
            will be the first code executed */
         *(.text.startup)
-        *(.text)
+        *(.text*)
     }
 
     .rodata :
     {
-        *(.rodata)
+        *(.rodata*)
     }
 
     .data :
@@ -23,6 +23,10 @@ SECTIONS
 
     .bss :
     {
+        __bss_start = .;
+        *(COMMON)
         *(.bss)
+        __bss_end = ALIGN(4);
     }
+    __bss_sizel = (__bss_end - __bss_start) / 4;
 }
