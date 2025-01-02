@@ -1,6 +1,7 @@
 #ifndef PRINTK_HPP
 #define PRINTK_HPP
 
-void printk(const char* str);
+extern "C" void putchar(char c);
+extern void printk(const char* str);
 
 #endif // PRINTK_HPP

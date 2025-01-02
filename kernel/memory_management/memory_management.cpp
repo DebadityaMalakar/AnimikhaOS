@@ -1,10 +1,12 @@
 #include "memory_management.hpp"
 #include "../io/printk.hpp"
 
-
-extern "C" void putchar(char c);
-
 namespace Memory {
+
+    // These are exported from main.asm
+    extern "C" MemoryMapEntry memory_map[];
+    extern "C" uint32_t entries_counter;
+
     void MemoryManager::initialize() {
         // Memory detection is already done by main.asm
         parseMemoryMap();

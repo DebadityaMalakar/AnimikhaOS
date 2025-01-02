@@ -34,10 +34,6 @@ namespace Memory {
         static MemoryMapEntry* getMemoryMap();
         static uint32_t getEntryCount();
     };
-
-    // These are exported from main.asm
-    extern "C" MemoryMapEntry memory_map[];
-    extern "C" uint32_t entries_counter;
 }
 
 #endif // MEMORY_MANAGEMENT_HPP
