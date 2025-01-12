@@ -28,3 +28,6 @@ Plans:
 
 Authors:
     - Debaditya Malakar ([debadityamalakar@outlook.com](mailto:debadityamalakar@outlook.com))
+
+Contributors:
+    - Michael Petch ([mpetch@gmail.com](mailto:mpetch@gmail.com))
