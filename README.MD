@@ -2,7 +2,7 @@
 
 Plans:
 
-    - Part 1: The Bootloader []
+    - Part 1: The Bootloader [X]
 
     - Part 2: The Kernel {Memory Management} []
 
