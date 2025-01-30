@@ -19,7 +19,8 @@ BUILD_DIR = ../build/kernel
 ASM_SOURCES = $(KERNEL_DIR)/main/main.asm
 CPP_SOURCES = $(IO_DIR)/printk.cpp \
               $(MEMORY_DIR)/memory_management.cpp \
-              $(KERNEL_DIR)/main/kernel.cpp
+              $(KERNEL_DIR)/main/kernel.cpp \
+			  $(KERNEL_DIR)/arch/x86/gdt/gdt.cpp
 
 # Object files
 ASM_OBJECTS = $(patsubst $(KERNEL_DIR)/%.asm,$(BUILD_DIR)/%.o,$(ASM_SOURCES))
