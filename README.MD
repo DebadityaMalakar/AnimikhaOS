@@ -6,7 +6,7 @@ Plans:
 
     - Part 2: The Kernel {Memory Management} []
 
-    - Part 2.25: The Kernel {GDT} [x]
+    - Part 2.25: The Kernel {GDT} [X]
 
     - Part 2.5: The Kernel {Architecture Specific Support - optional} []
 
