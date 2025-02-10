@@ -1,50 +1,62 @@
-#include <stdint.h>
 #include "gdt.hpp"
 
+gdt_entry_t gdt[3];    // GDT with 3 entries
+gdt_ptr_t gdt_ptr;     // GDT descriptor
+tss_entry_t tss;       // Task State Segment
 
-// struct gdt_entry {
-//     uint32_t limit;
-//     uint32_t base;
-//     uint8_t access;
-//     uint8_t granularity;
-// };
+// Function to set a GDT entry
+void set_gdt_entry(int index, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) {
+    gdt[index].base_low = base & 0xFFFF;
+    gdt[index].base_middle = (base >> 16) & 0xFF;
+    gdt[index].base_high = (base >> 24) & 0xFF;
 
-// struct tss_entry {
-//     uint32_t esp0;
-//     // Other TSS fields
-// };
+    gdt[index].limit_low = limit & 0xFFFF;
+    gdt[index].granularity = (limit >> 16) & 0x0F;
 
-// Initialize the GDT
+    gdt[index].granularity |= granularity & 0xF0;
+    gdt[index].access = access;
+}
+
+// Function to initialize the GDT
 void initialize_gdt() {
-    // Create GDT entries
-    gdt_entry gdt[3];
-    gdt[0].limit = 0;
-    gdt[0].base = 0;
-    gdt[0].access = 0;
-    gdt[0].granularity = 0;
+    // Set up the GDT pointer
+    gdt_ptr.limit = (sizeof(gdt_entry_t) * 3) - 1;
+    gdt_ptr.base = (uint32_t)&gdt;
 
-    gdt[1].limit = 0xFFFFF;
-    gdt[1].base = 0;
-    gdt[1].access = 0b10100;
-    gdt[1].granularity = 0b11;
+    // Null segment
+    set_gdt_entry(0, 0, 0, 0, 0);
 
-    gdt[2].limit = 0xFFFFFFFF;
-    gdt[2].base = 0;
-    gdt[2].access = 0b11100;
-    gdt[2].granularity = 0b11;
+    // Code segment
+    set_gdt_entry(1, 0, 0xFFFFF, 0x9A, 0xCF);
+
+    // Data segment
+    set_gdt_entry(2, 0, 0xFFFFF, 0x92, 0xCF);
 
     // Initialize TSS
-    tss_entry tss;
     tss.esp0 = 0;
-    // Initialize other TSS fields
+    tss.ss0 = 0x10;  // Data segment selector
+    for (int i = 0; i < 23; i++) tss.unused[i] = 0;
 
-    // Set up GDT descriptor
-    uint32_t gdt_pointer = (uint32_t)&gdt;
-    uint32_t tss_pointer = (uint32_t)&tss;
+    // Load GDT
+    __asm__ __volatile__("lgdt %0" : : "m"(gdt_ptr));
 
-    // Flush GDT
-    __asm__ __volatile__("lgdt %0" : : "m" (gdt_pointer));
+    // Load segment registers
+    __asm__ __volatile__(
+        "mov $0x10, %ax\n"
+        "mov %ax, %ds\n"
+        "mov %ax, %es\n"
+        "mov %ax, %fs\n"
+        "mov %ax, %gs\n"
+        "mov %ax, %ss\n"
+    );
 
-    // Flush TSS
-    __asm__ __volatile__("ltr %0" : : "r" (tss_pointer));
+    // Far jump to reload CS
+    __asm__ __volatile__(
+        "ljmp $0x08, $.flush\n"
+        ".flush:\n"
+    );
+
+    // Load TSS
+    uint16_t tss_selector = 0x18; // TSS selector (entry index 3 in GDT)
+    __asm__ __volatile__("ltr %0" : : "r"(tss_selector));
 }
